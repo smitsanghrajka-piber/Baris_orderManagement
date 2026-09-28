@@ -1,0 +1,107 @@
+// ───────────────────────── Notifications ─────────────────────────
+// Domain events → NotificationDispatcher → NotificationRule rows decide the
+// audience and channel → Notification (in-app, persisted first) and
+// EmailOutbox (processed by a scheduler with retry). Dedupe: while an unread
+// notification with the same dedupeKey exists for a recipient it is bumped,
+// not duplicated; after it is read, debounceMinutes suppresses re-creation.
+
+model Notification {
+  id             String        @id @default(uuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerUserId String?
+  customerUser   CustomerUser? @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+  type           String
+  title          String
+  body           String?
+  entityType     String?
+  entityId       String?
+  link           String?
+  dedupeKey      String?
+  occurrences    Int           @default(1)
+  readAt         DateTime?
+  emailedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  outbox EmailOutbox[]
+
+  @@index([userId, readAt])
+  @@index([customerUserId, readAt])
+  @@index([dedupeKey])
+  @@map("notification")
+}
+
+enum NotificationAudience {
+  ROLE // every active staff user holding roleCode
+  CONTACT_FLAG // every portal user whose contact has contactFlag = true, for the event's customer
+  SALES_REP // the customer's sales rep
+  SPECIFIC_USER // userId
+  ACTOR_TARGET // the user the event names explicitly (e.g. the new customer user)
+}
+
+enum Channel {
+  IN_APP
+  EMAIL
+  BOTH
+}
+
+model NotificationRule {
+  id              String               @id @default(uuid())
+  eventType       String
+  audience        NotificationAudience
+  roleCode        String?
+  contactFlag     String?
+  userId          String?
+  user            User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel         Channel              @default(IN_APP)
+  debounceMinutes Int                  @default(0)
+  digest          Boolean              @default(false)
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([eventType])
+  @@map("notification_rule")
+}
+
+model NotificationPreference {
+  id             String        @id @default(uuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerUserId String?
+  customerUser   CustomerUser? @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+  eventType      String
+  inApp          Boolean       @default(true)
+  email          Boolean       @default(true)
+
+  @@unique([userId, eventType])
+  @@unique([customerUserId, eventType])
+  @@map("notification_preference")
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model EmailOutbox {
+  id             String        @id @default(uuid())
+  toEmail        String
+  toName         String?
+  subject        String
+  htmlBody       String
+  textBody       String?
+  status         OutboxStatus  @default(PENDING)
+  attempts       Int           @default(0)
+  lastError      String?
+  notificationId String?
+  notification   Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  sentAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@map("email_outbox")
+}

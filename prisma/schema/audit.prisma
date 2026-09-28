@@ -1,0 +1,63 @@
+// ───────────────────────── Audit, activity, idempotency ─────────────────────────
+// AuditLog is forensic and append-only: the trigger audit_log_append_only
+// rejects UPDATE/DELETE, and the runtime DB role should hold INSERT/SELECT
+// only. Activity is the human-readable timeline rendered on a record; the
+// portal sees SHARED rows of its own tenant.
+
+model AuditLog {
+  id              BigInt    @id @default(autoincrement())
+  actorType       ActorType
+  actorId         String?
+  actorName       String?
+  actorCustomerId String?
+  action          String
+  entityType      String
+  entityId        String
+  before          Json?
+  after           Json?
+  ip              String?
+  userAgent       String?
+  requestId       String?
+  createdAt       DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@map("audit_log")
+}
+
+model Activity {
+  id         String     @id @default(uuid())
+  entityType String
+  entityId   String
+  customerId String?
+  actorType  ActorType
+  actorId    String?
+  actorName  String
+  verb       String
+  summary    String
+  meta       Json?
+  visibility Visibility @default(INTERNAL)
+  createdAt  DateTime   @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([customerId, createdAt])
+  @@map("activity")
+}
+
+// Claim-style idempotency (Idempotency-Key header). The claim is an
+// INSERT … ON CONFLICT DO NOTHING via createMany({ skipDuplicates }).
+model IdempotencyRecord {
+  scope        String
+  key          String
+  status       String    @default("PENDING")
+  responseJson Json?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@unique([scope, key])
+  @@index([createdAt])
+  @@map("idempotency_record")
+}

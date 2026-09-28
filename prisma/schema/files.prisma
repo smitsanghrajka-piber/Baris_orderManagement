@@ -1,0 +1,87 @@
+// ───────────────────────── Files & generated documents ─────────────────────────
+// Binary content lives in object storage (Supabase Storage, or local disk in
+// development). The File row is immutable (trigger file_immutable): the
+// storage key, hash, size and MIME type can never change, so a hash recorded
+// on an approval or a job always resolves to the same bytes.
+//
+// customerId is the tenant tag: null means internal-only and the portal can
+// never read it. Authorisation still goes through the owning entity via the
+// tenant resolver registry (src/common/tenant), never through the path.
+
+enum Visibility {
+  SHARED // customer-visible
+  INTERNAL // Baris only
+}
+
+model File {
+  id                       String        @id @default(uuid())
+  bucket                   String
+  storageKey               String        @unique
+  originalName             String
+  mimeType                 String
+  sizeBytes                Int
+  sha256                   String
+  uploadedByActorType      ActorType
+  uploadedByUserId         String?
+  uploadedByUser           User?         @relation("FileUploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  uploadedByCustomerUserId String?
+  uploadedByCustomerUser   CustomerUser? @relation("FileUploadedByCustomerUser", fields: [uploadedByCustomerUserId], references: [id], onDelete: Restrict)
+  customerId               String?
+  customer                 Customer?     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdAt                DateTime      @default(now())
+
+  attachments        Attachment[]
+  generatedDocuments GeneratedDocument[]
+  specDieLines       SpecificationVersion[] @relation("SpecDieLineFile")
+  companyLogo        CompanySettings[]
+
+  @@index([sha256])
+  @@index([customerId])
+  @@map("file")
+}
+
+// Polymorphic attachment. entityType must be registered in the tenant
+// resolver so portal access can be authorised.
+model Attachment {
+  id         String     @id @default(uuid())
+  fileId     String
+  file       File       @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  entityType String
+  entityId   String
+  category   String?
+  label      String?
+  visibility Visibility @default(INTERNAL)
+  createdAt  DateTime   @default(now())
+
+  @@index([entityType, entityId])
+  @@map("attachment")
+}
+
+enum DocumentType {
+  QUOTATION
+  ORDER_ACK
+  APPROVAL_CERTIFICATE
+  SPEC_SHEET
+  JOB_TICKET
+  QC_RECORD
+  PACKING_LIST
+  DISPATCH_NOTE
+}
+
+model GeneratedDocument {
+  id                   String       @id @default(uuid())
+  type                 DocumentType
+  entityType           String
+  entityId             String
+  revisionLabel        String
+  fileId               String
+  file                 File         @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  generatedAt          DateTime     @default(now())
+  generatedByActorType ActorType
+  generatedByUserId    String?
+  generatedByUser      User?        @relation("DocGeneratedByUser", fields: [generatedByUserId], references: [id], onDelete: Restrict)
+  sentTo               String?
+
+  @@index([entityType, entityId])
+  @@map("generated_document")
+}

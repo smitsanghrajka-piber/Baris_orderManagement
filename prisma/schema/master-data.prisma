@@ -1,0 +1,341 @@
+// ───────────────────────── Master data (configurable lookups) ─────────────────────────
+// Everything the brief calls "configurable" is a table, not an enum.
+// Historical records snapshot the lookup's code so renames never rewrite
+// history.
+
+model Material {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  micronDefault Decimal? @db.Decimal(8, 2)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customersDefault Customer[]
+  specifications   SpecificationVersion[]
+
+  @@map("material")
+}
+
+model Finish {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customersDefault Customer[]
+  specifications   SpecificationVersion[]
+
+  @@map("finish")
+}
+
+model ColourSystem {
+  id        String   @id @default(uuid())
+  code      String   @unique // CMYK PANTONE WHITE METALLIC SPOT CUSTOM
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  colours SpecificationColour[]
+
+  @@map("colour_system")
+}
+
+model LabelType {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skus               CustomerSku[]
+  checklistTemplates ChecklistTemplate[]
+
+  @@map("label_type")
+}
+
+model ApplicationType {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skus CustomerSku[]
+
+  @@map("application_type")
+}
+
+model PaymentTerm {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  days      Int
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customers Customer[]
+
+  @@map("payment_term")
+}
+
+model Carrier {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  name                String
+  trackingUrlTemplate String?
+  isActive            Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("carrier")
+}
+
+model Machine {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  type      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("machine")
+}
+
+// ─── Tooling ───
+
+enum ToolType {
+  DIE
+  CUTTING_TOOL
+  OTHER
+}
+
+enum ToolStatus {
+  ACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum ToolOwner {
+  BARIS
+  CUSTOMER
+}
+
+model Tool {
+  id         String     @id @default(uuid())
+  code       String     @unique
+  name       String
+  type       ToolType   @default(DIE)
+  widthMm    Decimal?   @db.Decimal(12, 3)
+  heightMm   Decimal?   @db.Decimal(12, 3)
+  cavities   Int?
+  location   String?
+  status     ToolStatus @default(ACTIVE)
+  ownedBy    ToolOwner  @default(BARIS)
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  notes      String?
+  archivedAt DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  specifications SpecificationVersion[]
+  plateSets      PlateSet[]
+
+  @@index([customerId])
+  @@map("tool")
+}
+
+enum PlateType {
+  PLATE
+  CYLINDER
+}
+
+model PlateSet {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  name        String
+  type        PlateType  @default(PLATE)
+  colourCount Int?
+  toolId      String?
+  tool        Tool?      @relation(fields: [toolId], references: [id], onDelete: Restrict)
+  status      ToolStatus @default(ACTIVE)
+  ownedBy     ToolOwner  @default(BARIS)
+  customerId  String?
+  customer    Customer?  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  notes       String?
+  archivedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  specifications SpecificationVersion[]
+
+  @@index([customerId])
+  @@map("plate_set")
+}
+
+// ─── Production workflow templates ───
+
+enum StageCategory {
+  PREP
+  PRINTING
+  FINISHING
+  INSPECTION
+  PACKING
+}
+
+model ProductionStageDefinition {
+  id        String        @id @default(uuid())
+  code      String        @unique
+  name      String
+  category  StageCategory
+  isActive  Boolean       @default(true)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  routeSteps ProductionRouteStep[]
+
+  @@map("production_stage_definition")
+}
+
+model ProductionRoute {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  steps          ProductionRouteStep[]
+  skus           CustomerSku[]
+  specifications SpecificationVersion[]
+
+  @@map("production_route")
+}
+
+model ProductionRouteStep {
+  id                    String                    @id @default(uuid())
+  routeId               String
+  route                 ProductionRoute           @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stageDefinitionId     String
+  stageDefinition       ProductionStageDefinition @relation(fields: [stageDefinitionId], references: [id], onDelete: Restrict)
+  sequence              Int
+  requiresQc            Boolean                   @default(false)
+  qcChecklistTemplateId String?
+  qcChecklistTemplate   ChecklistTemplate?        @relation(fields: [qcChecklistTemplateId], references: [id], onDelete: Restrict)
+  allowSkip             Boolean                   @default(false)
+
+  @@unique([routeId, sequence])
+  @@map("production_route_step")
+}
+
+enum ChecklistKind {
+  PREPRESS
+  QC
+}
+
+model ChecklistTemplate {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  kind        ChecklistKind
+  labelTypeId String?
+  labelType   LabelType?    @relation(fields: [labelTypeId], references: [id], onDelete: Restrict)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items      ChecklistTemplateItem[]
+  routeSteps ProductionRouteStep[]
+
+  @@map("checklist_template")
+}
+
+model ChecklistTemplateItem {
+  id         String            @id @default(uuid())
+  templateId String
+  template   ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  code       String
+  label      String
+  helpText   String?
+  sequence   Int
+  isRequired Boolean           @default(true)
+
+  @@unique([templateId, code])
+  @@map("checklist_template_item")
+}
+
+// ─── Numbering & company settings ───
+
+enum ResetPolicy {
+  NEVER
+  YEARLY
+}
+
+// Incremented with `UPDATE … SET "nextValue" = "nextValue" + 1 … RETURNING`
+// inside the caller's transaction (row lock; rollback un-consumes the number).
+model NumberSequence {
+  key         String      @id // CUSTOMER SKU ARTWORK QUOTATION SALES_ORDER JOB DISPATCH NCR INSPECTION
+  prefix      String
+  padding     Int         @default(6)
+  format      String      @default("{prefix}-{seq}")
+  resetPolicy ResetPolicy @default(NEVER)
+  periodKey   String?
+  nextValue   Int         @default(1)
+  updatedAt   DateTime    @updatedAt
+
+  @@map("number_sequence")
+}
+
+model CompanySettings {
+  id          String  @id @default("default")
+  legalName   String  @default("Baris IML")
+  tradingName String  @default("Baris IML")
+  abn         String?
+  street      String?
+  suburb      String?
+  state       String?
+  postcode    String?
+  country     String? @default("Australia")
+  phone       String?
+  email       String?
+  website     String?
+  logoFileId  String?
+  logoFile    File?   @relation(fields: [logoFileId], references: [id], onDelete: Restrict)
+
+  gstRatePct      Decimal @default(10) @db.Decimal(5, 2)
+  defaultCurrency String  @default("AUD")
+  timeZone        String  @default("Australia/Melbourne")
+
+  quoteValidityDays Int  @default(30)
+  proofReminderDays Int  @default(3)
+  proofExpiryDays   Int?
+
+  approvalStatementText    String @default("I confirm that I have reviewed this proof in full and approve it for production. I understand that Baris IML will print exactly what is shown and that any errors not identified at this stage are my responsibility.")
+  approvalStatementVersion Int    @default(1)
+
+  defaultOversPct             Decimal @default(0) @db.Decimal(5, 2)
+  defaultDeliveryTolerancePct Decimal @default(0) @db.Decimal(5, 2)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("company_settings")
+}

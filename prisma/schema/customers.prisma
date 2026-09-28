@@ -1,0 +1,150 @@
+// ───────────────────────── Customer master ─────────────────────────
+// Customer is the tenant boundary. Every customer-owned table carries a
+// customerId; portal queries always filter by the JWT tenant.
+
+enum CustomerStatus {
+  PROSPECT
+  ACTIVE
+  ON_HOLD
+  INACTIVE
+}
+
+model Customer {
+  id          String         @id @default(uuid())
+  number      String         @unique // CUS-000123
+  name        String
+  tradingName String?
+  abn         String?
+  taxStatus   String?
+  currency    String         @default("AUD")
+  status      CustomerStatus @default(ACTIVE)
+
+  paymentTermsId String?
+  paymentTerms   PaymentTerm? @relation(fields: [paymentTermsId], references: [id], onDelete: Restrict)
+  salesRepUserId String?
+  salesRep       User?        @relation("CustomerSalesRep", fields: [salesRepUserId], references: [id], onDelete: Restrict)
+
+  billingStreet   String?
+  billingSuburb   String?
+  billingState    String?
+  billingPostcode String?
+  billingCountry  String? @default("Australia")
+  phone           String?
+  email           String?
+  website         String?
+
+  /// Internal notes — never serialised to the portal.
+  notes        String?
+  /// Standing customer requirements — printed on job tickets, visible to the customer.
+  requirements String?
+
+  defaultMaterialId String?
+  defaultMaterial   Material? @relation(fields: [defaultMaterialId], references: [id], onDelete: Restrict)
+  defaultFinishId   String?
+  defaultFinish     Finish?   @relation(fields: [defaultFinishId], references: [id], onDelete: Restrict)
+
+  poNotRequired        Boolean  @default(false)
+  allowPartialDispatch Boolean  @default(true)
+  deliveryTolerancePct Decimal? @db.Decimal(5, 2)
+  oversPct             Decimal? @db.Decimal(5, 2)
+
+  creditHold         Boolean   @default(false)
+  creditHoldReason   String?
+  creditHoldAt       DateTime?
+  creditHoldByUserId String?
+  creditHoldBy       User?     @relation("CustomerCreditHoldBy", fields: [creditHoldByUserId], references: [id], onDelete: Restrict)
+
+  version    Int       @default(1)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contacts  CustomerContact[]
+  sites     CustomerSite[]
+  users     CustomerUser[]
+  skus      CustomerSku[]
+  files     File[]
+  tools     Tool[]
+  plateSets PlateSet[]
+
+  @@index([name])
+  @@index([status])
+  @@map("customer")
+}
+
+model CustomerContact {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  name       String
+  email      String?
+  phone      String?
+  position   String?
+  isPrimary  Boolean  @default(false)
+
+  // Commercial authority flags — set by Baris staff only (never by the portal).
+  canApproveArtwork       Boolean @default(false)
+  canAcceptQuotations     Boolean @default(false)
+  canSubmitOrders         Boolean @default(false)
+  receivesDispatchNotices Boolean @default(false)
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  portalUser CustomerUser?
+
+  @@index([customerId])
+  @@index([email])
+  @@map("customer_contact")
+}
+
+model CustomerSite {
+  id                   String    @id @default(uuid())
+  customerId           String
+  customer             Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  name                 String
+  street               String?
+  suburb               String?
+  state                String?
+  postcode             String?
+  country              String?   @default("Australia")
+  deliveryInstructions String?
+  isDefault            Boolean   @default(false)
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([customerId])
+  @@map("customer_site")
+}
+
+// Portal login. contactId links the login to the contact whose authority
+// flags gate approve / accept / order actions.
+model CustomerUser {
+  id                 String           @id @default(uuid())
+  customerId         String
+  customer           Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  contactId          String?          @unique
+  contact            CustomerContact? @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  email              String           @unique
+  passwordHash       String
+  name               String
+  isActive           Boolean          @default(true)
+  mustChangePassword Boolean          @default(false)
+  failedLogins       Int              @default(0)
+  lockedAt           DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  roles               CustomerUserRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference[]
+  filesUploaded       File[]                   @relation("FileUploadedByCustomerUser")
+
+  @@index([customerId])
+  @@map("customer_user")
+}

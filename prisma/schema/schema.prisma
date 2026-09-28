@@ -1,0 +1,15 @@
+// Baris IML — Prisma schema (folder mode: one file per domain).
+// This file holds the generator and datasource only. Models live in the
+// sibling files. Table names are snake_case via @@map; columns keep Prisma's
+// camelCase and are quoted in hand-written SQL (prisma/sql/*.sql).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}

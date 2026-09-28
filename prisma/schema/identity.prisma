@@ -1,0 +1,146 @@
+// ───────────────────────── Identity & RBAC ─────────────────────────
+// Two user populations share one JWT format (claim `kind`):
+//   User          — Baris staff, roles with scope STAFF
+//   CustomerUser  — portal login, always bound to exactly one Customer,
+//                   roles with scope CUSTOMER
+// Permissions are `module.action` (staff) or `portal.module.action`
+// (customer) codes. Every route declares one; RolesGuard is default-deny.
+
+enum ActorType {
+  STAFF
+  CUSTOMER
+  SYSTEM
+  MES
+}
+
+enum RoleScope {
+  STAFF
+  CUSTOMER
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  passwordHash       String
+  name               String
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedLogins       Int       @default(0)
+  lockedAt           DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  roles               UserRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference[]
+  notificationRules   NotificationRule[]
+
+  customersAsSalesRep    Customer[]             @relation("CustomerSalesRep")
+  creditHoldsApplied     Customer[]             @relation("CustomerCreditHoldBy")
+  specificationsCreated  SpecificationVersion[] @relation("SpecCreatedBy")
+  specificationsApproved SpecificationVersion[] @relation("SpecApprovedBy")
+  filesUploaded          File[]                 @relation("FileUploadedByUser")
+  documentsGenerated     GeneratedDocument[]    @relation("DocGeneratedByUser")
+
+  @@map("app_user")
+}
+
+model Role {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  description String?
+  isSystem    Boolean   @default(false)
+  scope       RoleScope
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  permissions   RolePermission[]
+  users         UserRole[]
+  customerUsers CustomerUserRole[]
+
+  @@map("role")
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  module      String
+  action      String
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permission")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permission")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@map("user_role")
+}
+
+model CustomerUserRole {
+  customerUserId String
+  roleId         String
+  customerUser   CustomerUser @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([customerUserId, roleId])
+  @@map("customer_user_role")
+}
+
+// Rotated on every exchange; a replay of a rotated token revokes every
+// session of that principal (see RefreshTokenService).
+model RefreshToken {
+  id             String    @id @default(uuid())
+  tokenHash      String    @unique
+  userId         String?
+  customerUserId String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  revokedReason  String?
+  rotatedToId    String?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerUser CustomerUser? @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([customerUserId])
+  @@map("refresh_token")
+}
+
+model PasswordResetToken {
+  id             String    @id @default(uuid())
+  tokenHash      String    @unique
+  userId         String?
+  customerUserId String?
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerUser CustomerUser? @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_token")
+}

@@ -1,0 +1,162 @@
+// ───────────────────────── Product / SKU & specification ─────────────────────────
+// A CustomerSku is one label product for one customer. Its technical
+// specification is version-controlled: SpecificationVersion rows are
+// immutable once approvedAt is set (trigger specification_version_immutable,
+// which also covers specification_colour). Changing an approved spec means a
+// new revision; CustomerSku.currentSpecificationId moves on approval.
+
+enum SkuStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  DISCONTINUED
+}
+
+enum SpecStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum WhiteInkMode {
+  NONE
+  BACKING
+  SPOT
+  FLOOD
+}
+
+model CustomerSku {
+  id              String           @id @default(uuid())
+  number          String           @unique // SKU-000456
+  customerId      String
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerSkuCode String?
+  description     String
+  labelTypeId     String?
+  labelType       LabelType?       @relation(fields: [labelTypeId], references: [id], onDelete: Restrict)
+  applicationId   String?
+  application     ApplicationType? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  mouldedProduct  String?
+  status          SkuStatus        @default(DRAFT)
+
+  currentSpecificationId String?               @unique
+  currentSpecification   SpecificationVersion? @relation("SkuCurrentSpec", fields: [currentSpecificationId], references: [id], onDelete: Restrict)
+
+  routeId  String?
+  route    ProductionRoute? @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  oversPct Decimal?         @db.Decimal(5, 2)
+
+  version    Int       @default(1)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  specifications SpecificationVersion[] @relation("SkuSpecs")
+
+  @@unique([customerId, customerSkuCode])
+  @@index([customerId])
+  @@index([status])
+  @@map("customer_sku")
+}
+
+model SpecificationVersion {
+  id            String      @id @default(uuid())
+  skuId         String
+  sku           CustomerSku @relation("SkuSpecs", fields: [skuId], references: [id], onDelete: Restrict)
+  revisionNo    Int
+  status        SpecStatus  @default(DRAFT)
+  changeSummary String?
+
+  // dimensions & shape
+  widthMm       Decimal @db.Decimal(12, 3)
+  heightMm      Decimal @db.Decimal(12, 3)
+  shape         String?
+  dieLineFileId String?
+  dieLineFile   File?   @relation("SpecDieLineFile", fields: [dieLineFileId], references: [id], onDelete: Restrict)
+
+  // material
+  materialId   String?
+  material     Material? @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  materialCode String? // snapshot
+  micron       Decimal?  @db.Decimal(8, 2)
+  labelWeightG Decimal?  @db.Decimal(10, 4)
+
+  // printing
+  colourCount         Int          @default(4)
+  whiteInk            WhiteInkMode @default(NONE)
+  printOrientation    String?
+  unwindDirection     String?
+  printDirection      String?
+  varnish             Boolean      @default(false)
+  lacquer             Boolean      @default(false)
+  finishId            String?
+  finish              Finish?      @relation(fields: [finishId], references: [id], onDelete: Restrict)
+  finishCode          String? // snapshot
+  metallic            Boolean      @default(false)
+  specialInks         String?
+  transparency        Boolean      @default(false)
+  barrierRequirements String?
+  staticRequirements  String?
+  surfaceTreatment    String?
+
+  // tooling & route
+  toolId       String?
+  tool         Tool?            @relation(fields: [toolId], references: [id], onDelete: Restrict)
+  toolCode     String?
+  plateSetId   String?
+  plateSet     PlateSet?        @relation(fields: [plateSetId], references: [id], onDelete: Restrict)
+  plateSetCode String?
+  routeId      String?
+  route        ProductionRoute? @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  routeCode    String?
+
+  // packing
+  packingMethod    String?
+  labelsPerCarton  Int?
+  labelsPerPallet  Int?
+  cartonsPerPallet Int?
+
+  /// Customer-visible requirements.
+  customerRequirements       String?
+  /// Internal notes — never serialised to the portal.
+  internalNotes              String?
+  /// Author flags that this change affects the approved artwork and needs customer re-approval.
+  requiresCustomerReapproval Boolean @default(false)
+
+  approvedAt       DateTime?
+  approvedByUserId String?
+  approvedBy       User?     @relation("SpecApprovedBy", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  supersededAt     DateTime?
+  createdByUserId  String
+  createdBy        User      @relation("SpecCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  colours      SpecificationColour[]
+  currentOfSku CustomerSku?          @relation("SkuCurrentSpec")
+
+  @@unique([skuId, revisionNo])
+  @@index([status])
+  @@map("specification_version")
+}
+
+// Structured colour: never free text. colourSystemCode is a snapshot of the
+// lookup so a renamed system does not rewrite history.
+model SpecificationColour {
+  id               String               @id @default(uuid())
+  specificationId  String
+  specification    SpecificationVersion @relation(fields: [specificationId], references: [id], onDelete: Restrict)
+  sequence         Int
+  colourSystemId   String
+  colourSystem     ColourSystem         @relation(fields: [colourSystemId], references: [id], onDelete: Restrict)
+  colourSystemCode String
+  code             String?
+  name             String?
+  reference        String?
+  toleranceDeltaE  Decimal?             @db.Decimal(6, 2)
+  instructions     String?
+
+  @@unique([specificationId, sequence])
+  @@map("specification_colour")
+}
