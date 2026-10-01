@@ -32,14 +32,15 @@ export class PortalController {
   @RequirePermission('portal.dashboard.view') @Get('dashboard')
   async dashboard(@CurrentUser() user: AuthUser) {
     const customerId = user.customerId!;
-    const [skus, activity, notifications] = await Promise.all([
+    const [skus, activity, notifications, awaitingReview] = await Promise.all([
       this.prisma.customerSku.count({ where: { customerId, archivedAt: null, status: 'ACTIVE' } }),
       this.prisma.activity.findMany({ where: { customerId, visibility: 'SHARED' }, orderBy: { createdAt: 'desc' }, take: 10 }),
       this.prisma.notification.count({ where: { customerUserId: user.id, readAt: null } }),
+      this.prisma.artwork.count({ where: { customerId, archivedAt: null, status: { in: ['PROOF_SENT', 'CUSTOMER_REVIEWING'] } } }),
     ]);
     // Later phases fill these tiles; the shape is stable from day one.
     return {
-      tiles: { ordersInProduction: 0, artworkAwaitingApproval: 0, quotationsOpen: 0, recentOrders: 0, dispatchesRecent: 0, actionRequired: 0, activeSkus: skus, unreadNotifications: notifications },
+      tiles: { ordersInProduction: 0, artworkAwaitingApproval: awaitingReview, quotationsOpen: 0, recentOrders: 0, dispatchesRecent: 0, actionRequired: awaitingReview, activeSkus: skus, unreadNotifications: notifications },
       recentActivity: toPortalList(PortalActivityView, activity),
     };
   }

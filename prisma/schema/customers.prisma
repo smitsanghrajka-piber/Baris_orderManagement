@@ -66,6 +66,7 @@ model Customer {
   files     File[]
   tools     Tool[]
   plateSets PlateSet[]
+  artworks  Artwork[]
 
   @@index([name])
   @@index([status])
@@ -144,6 +145,8 @@ model CustomerUser {
   notifications       Notification[]
   notificationPrefs   NotificationPreference[]
   filesUploaded       File[]                   @relation("FileUploadedByCustomerUser")
+  artworkComments     ArtworkComment[]         @relation("ArtworkCommentCustomerAuthor")
+  artworkDecisions    ArtworkApproval[]        @relation("ArtworkApprovalCustomerUser")
 
   @@index([customerId])
   @@map("customer_user")

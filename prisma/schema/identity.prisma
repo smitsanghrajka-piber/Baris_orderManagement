@@ -38,12 +38,18 @@ model User {
   notificationPrefs   NotificationPreference[]
   notificationRules   NotificationRule[]
 
-  customersAsSalesRep    Customer[]             @relation("CustomerSalesRep")
-  creditHoldsApplied     Customer[]             @relation("CustomerCreditHoldBy")
-  specificationsCreated  SpecificationVersion[] @relation("SpecCreatedBy")
-  specificationsApproved SpecificationVersion[] @relation("SpecApprovedBy")
-  filesUploaded          File[]                 @relation("FileUploadedByUser")
-  documentsGenerated     GeneratedDocument[]    @relation("DocGeneratedByUser")
+  customersAsSalesRep     Customer[]             @relation("CustomerSalesRep")
+  creditHoldsApplied      Customer[]             @relation("CustomerCreditHoldBy")
+  specificationsCreated   SpecificationVersion[] @relation("SpecCreatedBy")
+  specificationsApproved  SpecificationVersion[] @relation("SpecApprovedBy")
+  filesUploaded           File[]                 @relation("FileUploadedByUser")
+  documentsGenerated      GeneratedDocument[]    @relation("DocGeneratedByUser")
+  artworksManaged         Artwork[]              @relation("ArtworkAccountManager")
+  artworksCreated         Artwork[]              @relation("ArtworkCreatedBy")
+  artworkVersionsUploaded ArtworkVersion[]       @relation("ArtworkVersionUploadedBy")
+  artworkVersionsSent     ArtworkVersion[]       @relation("ArtworkVersionSentBy")
+  artworkComments         ArtworkComment[]       @relation("ArtworkCommentAuthor")
+  artworkDecisions        ArtworkApproval[]      @relation("ArtworkApprovalUser")
 
   @@map("app_user")
 }

@@ -4,87 +4,91 @@
 
 /* ─── Theme tokens ───────────────────────────────────────────────────────────
    Every colour in the app reads one of these, never a raw hex, so dark mode
-   and the six semantic tones work everywhere (Tailwind classes and inline
-   styles alike). Ported from the Piber ERP token set; the Baris brand palette
-   (deep teal-ink) is an ASSUMPTION — REQUIRES CONFIRMATION against Baris's
-   real brand colours.                                                        */
+   and the semantic tones work everywhere. Palette: graphite neutrals with an
+   orange accent. Two oranges on purpose: --accent is the bright brand orange
+   for bars, highlights and focus; --brand is a deeper burnt orange for
+   filled buttons and links so white text on it stays >= 4.5:1 (WCAG AA).
+   Not yet checked against official Baris brand colours.                    */
 :root {
   color-scheme: light;
-  --bg-app:        #F5F7F9;
+  --bg-app:        #F7F7F6;
   --bg-card:       #FFFFFF;
-  --bg-elevated:   #EEF2F5;
-  --bg-subtle:     #F8FAFB;
+  --bg-elevated:   #F0EFED;
+  --bg-subtle:     #FAFAF9;
   --bg-input:      #FFFFFF;
-  --bg-sidebar:    #0F2D3A;
-  --border:        #DFE5EA;
-  --border-subtle: #EDF1F4;
-  --input-border:  #CBD3DB;
-  --text-primary:  #15212B;
-  --text-secondary:#43525F;
-  --text-muted:    #5F6E7B;
-  --text-tertiary: #8D9AA6;
-  --text-link:     #0B6E7A;
+  --bg-sidebar:    #1C1F24;
+  --border:        #E4E2DE;
+  --border-subtle: #EFEEEB;
+  --input-border:  #D3D0CA;
+  --text-primary:  #1C1F24;
+  --text-secondary:#45484E;
+  --text-muted:    #62656B;
+  --text-tertiary: #9A9CA0;
+  --text-link:     #B4460B;
 
-  --brand:         #0E7C86;
-  --brand-strong:  #0A5F68;
-  --brand-soft:    #E3F3F4;
+  --accent:        #E8661C;
+  --brand:         #C94F0C;
+  --brand-strong:  #A9410A;
+  --brand-soft:    #FCEEE4;
   --brand-fg:      #FFFFFF;
 
-  --sidebar-text:        #C9D8DF;
+  --sidebar-text:        #C4C6CA;
   --sidebar-text-strong: #FFFFFF;
-  --sidebar-section:     #7F98A4;
-  --sidebar-hover:       rgba(255,255,255,0.07);
-  --sidebar-active:      rgba(94,206,214,0.16);
-  --sidebar-active-bar:  #5ECED6;
+  --sidebar-section:     #8A8D93;
+  --sidebar-hover:       rgba(255,255,255,0.06);
+  --sidebar-active:      rgba(232,102,28,0.16);
+  --sidebar-active-bar:  #F07A2A;
 
-  --shadow-sm: 0 1px 2px rgba(16,33,43,0.06), 0 1px 3px rgba(16,33,43,0.05);
-  --shadow-md: 0 8px 24px rgba(16,33,43,0.12), 0 2px 6px rgba(16,33,43,0.06);
+  --shadow-sm: 0 1px 2px rgba(20,22,26,0.06), 0 1px 3px rgba(20,22,26,0.05);
+  --shadow-md: 0 8px 24px rgba(20,22,26,0.12), 0 2px 6px rgba(20,22,26,0.06);
 
-  /* Semantic tones: every badge, banner and inline error. fg ≥ 7:1 on bg. */
-  --tone-neutral-bg: #EEF2F5; --tone-neutral-fg: #334350; --tone-neutral-border: #CBD3DB;
+  /* Semantic tones: every badge, banner and inline error. fg >= 7:1 on bg. */
+  --tone-neutral-bg: #F0EFED; --tone-neutral-fg: #3A3D42; --tone-neutral-border: #D3D0CA;
   --tone-info-bg:    #DBEAFE; --tone-info-fg:    #1E40AF; --tone-info-border:    #93C5FD;
   --tone-success-bg: #D1FAE5; --tone-success-fg: #065F46; --tone-success-border: #6EE7B7;
   --tone-warning-bg: #FEF3C7; --tone-warning-fg: #92400E; --tone-warning-border: #FCD34D;
   --tone-danger-bg:  #FEE2E2; --tone-danger-fg:  #991B1B; --tone-danger-border:  #FCA5A5;
   --tone-purple-bg:  #EDE9FE; --tone-purple-fg:  #5B21B6; --tone-purple-border:  #C4B5FD;
 
-  --focus-ring: #0E7C86;
+  --focus-ring: #E8661C;
 }
 
 @media screen {
   html.dark {
     color-scheme: dark;
-    --bg-app:        #0D161C;
-    --bg-card:       #152129;
-    --bg-elevated:   #1F2E38;
-    --bg-subtle:     #182630;
-    --bg-input:      #111C23;
-    --bg-sidebar:    #0A1419;
-    --border:        #263842;
-    --border-subtle: #1C2B34;
-    --input-border:  #354955;
-    --text-primary:  #E8EEF2;
-    --text-secondary:#BACAD4;
-    --text-muted:    #8FA2AE;
-    --text-tertiary: #677B88;
-    --text-link:     #6FD3DA;
+    --bg-app:        #141619;
+    --bg-card:       #1D2026;
+    --bg-elevated:   #272B32;
+    --bg-subtle:     #20242A;
+    --bg-input:      #17191D;
+    --bg-sidebar:    #101215;
+    --border:        #30343B;
+    --border-subtle: #24272D;
+    --input-border:  #3D424A;
+    --text-primary:  #ECEDEF;
+    --text-secondary:#C3C6CB;
+    --text-muted:    #979BA2;
+    --text-tertiary: #6E727A;
+    --text-link:     #F7A065;
 
-    --brand:         #1A9AA5;
-    --brand-strong:  #3DB8C2;
-    --brand-soft:    #12343A;
-    --brand-fg:      #FFFFFF;
+    /* On dark surfaces the bright orange works as a fill with dark text. */
+    --accent:        #F07A2A;
+    --brand:         #F07A2A;
+    --brand-strong:  #F5934F;
+    --brand-soft:    #3A2416;
+    --brand-fg:      #16181C;
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
     --shadow-md: 0 10px 28px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
 
-    --tone-neutral-bg: #26353F; --tone-neutral-fg: #DCE5EA; --tone-neutral-border: #3A4D59;
+    --tone-neutral-bg: #2C3037; --tone-neutral-fg: #E2E4E7; --tone-neutral-border: #444951;
     --tone-info-bg:    #1E3A5F; --tone-info-fg:    #BFDBFE; --tone-info-border:    #2F5A94;
     --tone-success-bg: #0F3D2E; --tone-success-fg: #A7F3D0; --tone-success-border: #1B6B50;
     --tone-warning-bg: #4A2E0B; --tone-warning-fg: #FDE68A; --tone-warning-border: #8A5A14;
     --tone-danger-bg:  #4C1D1D; --tone-danger-fg:  #FECACA; --tone-danger-border:  #8B3434;
     --tone-purple-bg:  #3B2A6B; --tone-purple-fg:  #DDD6FE; --tone-purple-border:  #5B47A0;
 
-    --focus-ring: #5ECED6;
+    --focus-ring: #F7A065;
   }
 }
 

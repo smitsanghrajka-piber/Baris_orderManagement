@@ -27,6 +27,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AuditQueryModule } from './modules/audit/audit-query.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PortalModule } from './modules/portal/portal.module';
+import { ArtworksModule } from './modules/artworks/artworks.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -47,7 +48,7 @@ import { HealthController } from './health.controller';
 
     // domain
     NotificationsModule, AuthModule, UsersModule, CustomersModule, ProductsModule, MasterDataModule, ToolingModule,
-    FilesModule, AuditQueryModule, SettingsModule, PortalModule,
+    FilesModule, AuditQueryModule, SettingsModule, PortalModule, ArtworksModule,
   ],
   controllers: [HealthController],
   providers: [

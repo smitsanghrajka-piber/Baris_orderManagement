@@ -53,6 +53,7 @@ model CustomerSku {
   updatedAt  DateTime  @updatedAt
 
   specifications SpecificationVersion[] @relation("SkuSpecs")
+  artworks       Artwork[]
 
   @@unique([customerId, customerSkuCode])
   @@index([customerId])

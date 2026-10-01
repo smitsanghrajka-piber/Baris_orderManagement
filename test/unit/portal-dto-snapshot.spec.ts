@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { PortalCustomerView, PortalSkuView, PortalUserView, toPortal } from '../../src/modules/portal/dto/portal.dto';
+import { PortalArtworkCommentView, PortalArtworkView } from '../../src/modules/artworks/dto/portal-artworks.dto';
 
 /**
  * Portal serialisation is allow-list only. This test feeds fully-populated
@@ -65,5 +66,52 @@ describe('portal DTO allow-list', () => {
     const s = toPortal(PortalSkuView, fullSku);
     expect(s.currentSpecification?.customerRequirements).toBe('Visible');
     expect((s.currentSpecification as any).internalNotes).toBeUndefined();
+  });
+});
+
+describe('portal artwork DTO allow-list', () => {
+  const ARTWORK_FORBIDDEN = [...FORBIDDEN, 'ip', 'userAgent', 'authorUserId', 'authorCustomerUserId', 'uploadedByUserId', 'sentByUserId',
+    'decidedByUserId', 'decidedByCustomerUserId', 'accountManagerUserId', 'createdByUserId', 'sha256', 'storageKey', 'bucket', 'proofFileSha256'];
+
+  const fullArtwork = {
+    id: 'a1', number: 'ART-000001', customerId: 'c1', skuId: 'k', title: 'Lid', status: 'APPROVED', currentVersionId: 'v1', accountManagerUserId: 'u1',
+    createdByUserId: 'u1', version: 2, archivedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    sku: { id: 'k', number: 'SKU-1', description: 'Lid', customerSkuCode: null, internalNotes: 'INTERNAL SECRET' },
+    accountManager: { name: 'Sam', email: 'sam@baris', id: 'u1', passwordHash: 'x' },
+    newVersionInPreparation: false, canApprove: true, canComment: true, approvalStatement: { text: 'I approve', statementVersion: 1 },
+    versions: [{
+      id: 'v1', artworkId: 'a1', revisionNo: 1, status: 'APPROVED', revisionDescription: 'First', parentVersionId: null, uploadedByUserId: 'u1',
+      uploadedByActorType: 'STAFF', customerNotes: 'See logo', internalNotes: 'INTERNAL SECRET', changeRequestSummary: null, lockedAt: new Date(), sentAt: new Date(),
+      sentByUserId: 'u1', firstViewedAt: new Date(), decidedAt: new Date(), approvedAt: new Date(), supersededAt: null, supersededByVersionId: null,
+      files: [{ id: 'f1', versionId: 'v1', fileId: 'file1', kind: 'PROOF', isPrimary: true, sha256: 'abc', file: { id: 'file1', originalName: 'p.pdf', mimeType: 'application/pdf', sizeBytes: 10, sha256: 'abc', storageKey: 'k', bucket: 'b' } }],
+      approvals: [{ id: 'd1', versionId: 'v1', decision: 'APPROVED', proofFileId: 'file1', proofFileSha256: 'abc', decidedByActorType: 'CUSTOMER', decidedByCustomerUserId: 'pu',
+        decidedByContactId: 'k1', decidedByUserId: null, decidedByName: 'Jo', organisationName: 'Piber', statement: 'I approve', statementVersion: 1, comments: null,
+        ip: '10.0.0.1', userAgent: 'Mozilla', decidedAt: new Date() }],
+    }],
+  };
+
+  const fullComment = {
+    id: 'c', versionId: 'v1', parentId: null, authorType: 'STAFF', authorUserId: 'u1', authorCustomerUserId: null, authorName: 'Sam', visibility: 'SHARED',
+    body: 'Fixed', annotation: { page: 1, x: 0.1, y: 0.1, w: 0.2, h: 0.2 }, status: 'OPEN', submittedAt: new Date(), resolvedAt: null, resolvedByName: null,
+    createdAt: new Date(), updatedAt: new Date(), isDraft: false, isMine: false,
+  };
+
+  it.each([
+    ['artwork', PortalArtworkView, fullArtwork],
+    ['comment', PortalArtworkCommentView, fullComment],
+  ])('%s view exposes no forbidden keys', (_label, cls, fixture) => {
+    const out = JSON.parse(JSON.stringify(toPortal(cls as any, fixture)));
+    const keys = keysDeep(out);
+    expect(ARTWORK_FORBIDDEN.filter((k) => keys.has(k))).toEqual([]);
+    expect(JSON.stringify(out)).not.toContain('INTERNAL SECRET');
+  });
+
+  it('keeps what the reviewer needs, including annotations and the statement', () => {
+    const a = JSON.parse(JSON.stringify(toPortal(PortalArtworkView, fullArtwork)));
+    expect(a.versions[0].files[0].file).toEqual({ id: 'file1', originalName: 'p.pdf', mimeType: 'application/pdf', sizeBytes: 10 });
+    expect(a.versions[0].approvals[0]).toMatchObject({ decision: 'APPROVED', decidedByName: 'Jo', statement: 'I approve' });
+    expect(a.approvalStatement).toEqual({ text: 'I approve', statementVersion: 1 });
+    const c = JSON.parse(JSON.stringify(toPortal(PortalArtworkCommentView, fullComment)));
+    expect(c.annotation).toEqual({ page: 1, x: 0.1, y: 0.1, w: 0.2, h: 0.2 });
   });
 });

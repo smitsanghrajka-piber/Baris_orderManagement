@@ -1,0 +1,192 @@
+// ───────────────────────── Artwork & proof review ─────────────────────────
+// An Artwork (ART-000123) belongs to one customer and one of its SKUs. It
+// is a stream of immutable revisions (ArtworkVersion); the head only points
+// at the current one (architecture §6). Phase 3 slice: staff upload a proof,
+// send it to the customer, the customer marks up areas and comments, then
+// submits "changes requested" or "approved"; staff answer with a new version.
+// Prepress checklists, approval-request recipients and release for
+// production are later slices on the same tables.
+
+enum ArtworkStatus {
+  DRAFT
+  CUSTOMER_ARTWORK_RECEIVED
+  PREPRESS_REVIEW
+  CHANGES_REQUIRED
+  PROOF_IN_PREPARATION
+  PROOF_SENT
+  CUSTOMER_REVIEWING
+  CHANGES_REQUESTED
+  REJECTED
+  APPROVED
+  APPROVED_FOR_PRODUCTION
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum ArtworkFileKind {
+  SOURCE
+  PROOF
+  PRODUCTION
+  DIE_LINE
+  REFERENCE
+}
+
+enum CommentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+model Artwork {
+  id                   String          @id @default(uuid())
+  number               String          @unique // ART-000123
+  customerId           String
+  customer             Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  skuId                String
+  sku                  CustomerSku     @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  title                String
+  /// Mirrors the current version's status, for list filtering.
+  status               ArtworkStatus   @default(DRAFT)
+  currentVersionId     String?         @unique
+  currentVersion       ArtworkVersion? @relation("ArtworkCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  /// Account manager responsible for the artwork (notified on customer feedback).
+  accountManagerUserId String?
+  accountManager       User?           @relation("ArtworkAccountManager", fields: [accountManagerUserId], references: [id], onDelete: Restrict)
+  createdByUserId      String
+  createdBy            User            @relation("ArtworkCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  version              Int             @default(1)
+  archivedAt           DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  versions ArtworkVersion[] @relation("ArtworkVersions")
+
+  @@index([customerId])
+  @@index([skuId])
+  @@index([status])
+  @@map("artwork")
+}
+
+model ArtworkVersion {
+  id                   String        @id @default(uuid())
+  artworkId            String
+  artwork              Artwork       @relation("ArtworkVersions", fields: [artworkId], references: [id], onDelete: Restrict)
+  revisionNo           Int
+  status               ArtworkStatus
+  revisionDescription  String
+  parentVersionId      String?
+  uploadedByUserId     String?
+  uploadedByUser       User?         @relation("ArtworkVersionUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  uploadedByActorType  ActorType
+  /// Shown to the customer with the proof.
+  customerNotes        String?
+  /// Baris only — never serialised to the portal.
+  internalNotes        String?
+  /// Customer's summary when they submitted their review.
+  changeRequestSummary String?
+
+  /// Set when the proof is sent: from then on the files are frozen.
+  lockedAt              DateTime?
+  sentAt                DateTime?
+  sentByUserId          String?
+  sentBy                User?     @relation("ArtworkVersionSentBy", fields: [sentByUserId], references: [id], onDelete: Restrict)
+  firstViewedAt         DateTime?
+  decidedAt             DateTime?
+  approvedAt            DateTime?
+  supersededAt          DateTime?
+  supersededByVersionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files     ArtworkFile[]
+  comments  ArtworkComment[]
+  approvals ArtworkApproval[]
+  currentOf Artwork?          @relation("ArtworkCurrentVersion")
+
+  @@unique([artworkId, revisionNo])
+  @@index([status])
+  @@map("artwork_version")
+}
+
+model ArtworkFile {
+  id        String          @id @default(uuid())
+  versionId String
+  version   ArtworkVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  fileId    String
+  file      File            @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  kind      ArtworkFileKind
+  isPrimary Boolean         @default(false)
+  /// Copied from File at insert, so the hash travels with the version.
+  sha256    String
+  createdAt DateTime        @default(now())
+
+  @@index([versionId])
+  @@map("artwork_file")
+}
+
+/// A comment on a version. `annotation` marks an area of the proof with
+/// coordinates normalised to 0..1 of the page: {page, x, y, w, h} (w = h = 0
+/// is a pin). Customer comments start as drafts (submittedAt null) visible
+/// only inside the customer's organisation, and reach Baris when the
+/// customer submits their review.
+model ArtworkComment {
+  id                   String           @id @default(uuid())
+  versionId            String
+  version              ArtworkVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  parentId             String?
+  parent               ArtworkComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Restrict)
+  replies              ArtworkComment[] @relation("CommentReplies")
+  authorType           ActorType
+  authorUserId         String?
+  authorUser           User?            @relation("ArtworkCommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  authorCustomerUserId String?
+  authorCustomerUser   CustomerUser?    @relation("ArtworkCommentCustomerAuthor", fields: [authorCustomerUserId], references: [id], onDelete: Restrict)
+  authorName           String
+  visibility           Visibility       @default(SHARED)
+  body                 String
+  annotation           Json?
+  status               CommentStatus    @default(OPEN)
+  submittedAt          DateTime?
+  resolvedAt           DateTime?
+  resolvedByName       String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([versionId])
+  @@map("artwork_comment")
+}
+
+/// Append-only decision record (trigger artwork_approval_append_only): what
+/// was decided, on which exact proof bytes, by whom, under which statement.
+model ArtworkApproval {
+  id                      String           @id @default(uuid())
+  versionId               String
+  version                 ArtworkVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  decision                ApprovalDecision
+  proofFileId             String
+  proofFileSha256         String
+  decidedByActorType      ActorType
+  decidedByCustomerUserId String?
+  decidedByCustomerUser   CustomerUser?    @relation("ArtworkApprovalCustomerUser", fields: [decidedByCustomerUserId], references: [id], onDelete: Restrict)
+  decidedByContactId      String?
+  decidedByUserId         String?
+  decidedByUser           User?            @relation("ArtworkApprovalUser", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  decidedByName           String
+  organisationName        String
+  /// Verbatim approval statement shown at the moment of approval.
+  statement               String?
+  statementVersion        Int?
+  comments                String?
+  ip                      String?
+  userAgent               String?
+  decidedAt               DateTime         @default(now())
+
+  @@index([versionId])
+  @@map("artwork_approval")
+}

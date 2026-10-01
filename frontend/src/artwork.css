@@ -1,0 +1,415 @@
+/* ─── Artwork proof review ───────────────────────────────────────────────── */
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 22px;
+  align-items: start;
+}
+.review-side {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: calc(100vh - 110px);
+}
+.review-side > .surface {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.review-side .comment-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+.proof-viewer {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.proof-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.proof-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.proof-page,
+.proof-zoom {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 46px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.proof-page {
+  min-width: 86px;
+}
+.proof-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 8px;
+}
+.proof-frame {
+  background:
+    linear-gradient(45deg, var(--bg-elevated) 25%, transparent 25%) 0 0 / 18px 18px,
+    linear-gradient(-45deg, var(--bg-elevated) 25%, transparent 25%) 0 9px / 18px 18px,
+    linear-gradient(45deg, transparent 75%, var(--bg-elevated) 75%) 9px -9px / 18px 18px,
+    linear-gradient(-45deg, transparent 75%, var(--bg-elevated) 75%) -9px 0 / 18px 18px,
+    var(--bg-subtle);
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+  min-height: 420px;
+  padding: 16px;
+}
+.proof-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 380px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.proof-stage {
+  position: relative;
+  margin: 0 auto;
+  box-shadow: var(--shadow-md);
+  background: #fff;
+  user-select: none;
+}
+.proof-surface {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.proof-rendering {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--text-muted);
+}
+.proof-overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.proof-frame.is-drawing .proof-overlay {
+  cursor: crosshair;
+}
+.proof-frame.is-drawing .proof-marker {
+  pointer-events: none;
+}
+.proof-marker {
+  --marker: var(--accent);
+  position: absolute;
+  border: 2px solid var(--marker);
+  background: color-mix(in srgb, var(--marker) 12%, transparent);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  transition: box-shadow 150ms ease, background-color 150ms ease;
+}
+.proof-marker:hover,
+.proof-marker.is-active {
+  background: color-mix(in srgb, var(--marker) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--marker) 35%, transparent);
+  z-index: 2;
+}
+.proof-marker.tone-staff {
+  --marker: var(--tone-info-fg);
+}
+.proof-marker.tone-draft,
+.proof-marker.tone-pending {
+  border-style: dashed;
+}
+.proof-marker.is-resolved {
+  --marker: var(--tone-success-fg);
+  opacity: 0.75;
+}
+.proof-marker.is-pin {
+  width: 0;
+  height: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.proof-marker-n {
+  position: absolute;
+  top: -11px;
+  left: -11px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--marker);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.proof-marker.is-pin .proof-marker-n {
+  border-radius: 11px 11px 11px 2px;
+  top: -22px;
+  left: 0;
+}
+.proof-drawing {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  pointer-events: none;
+}
+.comment-list {
+  display: flex;
+  flex-direction: column;
+}
+.comment {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-subtle);
+  border-left: 3px solid transparent;
+  text-align: left;
+  background: transparent;
+  width: 100%;
+  cursor: default;
+}
+.comment.is-clickable {
+  cursor: pointer;
+}
+.comment.is-clickable:hover {
+  background: var(--bg-subtle);
+}
+.comment.is-active {
+  background: var(--brand-soft);
+  border-left-color: var(--accent);
+}
+.comment.is-resolved .comment-body {
+  color: var(--text-muted);
+}
+.comment-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+}
+.comment-n.tone-staff {
+  background: var(--tone-info-fg);
+}
+.comment-n.is-general {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+.comment-n.is-resolved {
+  background: var(--tone-success-fg);
+}
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.comment-meta strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.comment-body {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
+.comment-actions button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.comment-replies {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.composer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-subtle);
+}
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+}
+.composer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.composer-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.composer-hint button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-link);
+  cursor: pointer;
+}
+.version-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.version-pills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.version-pills button.selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--text-link);
+}
+.choice-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.choice-cards label {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.choice-cards label.selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.choice-cards label.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.choice-cards input {
+  min-height: 0;
+  margin-top: 2px;
+}
+.choice-cards strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.statement {
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.file-drop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed var(--input-border);
+  border-radius: 7px;
+  background: var(--bg-subtle);
+  cursor: pointer;
+  font-size: 13px;
+}
+.file-drop:hover,
+.file-drop.has-file {
+  border-color: var(--brand);
+}
+.file-drop input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.decision-card {
+  padding: 16px 18px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.decision-card + .decision-card {
+  border-top-style: dashed;
+}
+@media (max-width: 1100px) {
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+  .review-side {
+    position: static;
+    max-height: none;
+  }
+  .proof-frame {
+    max-height: 70vh;
+    min-height: 300px;
+  }
+}
+@media (max-width: 640px) {
+  .choice-cards {
+    grid-template-columns: 1fr;
+  }
+}

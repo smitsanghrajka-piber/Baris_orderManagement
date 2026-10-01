@@ -152,6 +152,9 @@ async function main() {
     { eventType: 'artwork.comment.added', audience: 'CONTACT_FLAG', contactFlag: 'canApproveArtwork', debounceMinutes: 15 },
     { eventType: 'artwork.changes_requested', audience: 'ROLE', roleCode: 'PREPRESS', channel: 'BOTH' },
     { eventType: 'artwork.changes_requested', audience: 'SALES_REP', channel: 'BOTH' },
+    // The artwork's own account manager (may differ from the customer's sales rep).
+    { eventType: 'artwork.changes_requested', audience: 'ACTOR_TARGET', channel: 'BOTH' },
+    { eventType: 'artwork.approved', audience: 'ACTOR_TARGET', channel: 'BOTH' },
     { eventType: 'artwork.rejected', audience: 'ROLE', roleCode: 'PREPRESS', channel: 'BOTH' },
     { eventType: 'artwork.rejected', audience: 'SALES_REP', channel: 'BOTH' },
     { eventType: 'artwork.approved', audience: 'ROLE', roleCode: 'PREPRESS' },
@@ -174,8 +177,11 @@ async function main() {
     { eventType: 'order.ready_for_dispatch', audience: 'ROLE', roleCode: 'DISPATCH' },
     { eventType: 'order.dispatched', audience: 'CONTACT_FLAG', contactFlag: 'receivesDispatchNotices', channel: 'BOTH' },
   ];
-  if ((await prisma.notificationRule.count()) === 0) {
-    await prisma.notificationRule.createMany({ data: rules.map((r) => ({ ...r, channel: r.channel ?? 'IN_APP' })) });
+  // Add any default rule that is missing (matched on event + audience + target); never
+  // touches rules an administrator has edited or added.
+  for (const r of rules) {
+    const exists = await prisma.notificationRule.findFirst({ where: { eventType: r.eventType, audience: r.audience, roleCode: r.roleCode ?? null, contactFlag: r.contactFlag ?? null } });
+    if (!exists) await prisma.notificationRule.create({ data: { ...r, channel: r.channel ?? 'IN_APP' } });
   }
 
   // ─── first admin ───

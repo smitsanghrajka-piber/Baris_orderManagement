@@ -70,10 +70,17 @@ export class FilesService {
     return { url, expiresInSeconds: SIGNED_URL_SECONDS, fileName: file.originalName, mimeType: file.mimeType, sizeBytes: file.sizeBytes };
   }
 
-  /** Phase 3 extends this with artwork files; in Phase 2 die-line files on a spec are customer-visible. */
+  /**
+   * Files a customer may read through an owning record: die-line files on a
+   * specification, and the proof of an artwork version that was sent to them
+   * (source and production files stay internal).
+   */
   private async isCustomerVisibleOwner(fileId: string): Promise<boolean> {
-    const spec = await this.prisma.specificationVersion.findFirst({ where: { dieLineFileId: fileId }, select: { id: true } });
-    return !!spec;
+    const [spec, proof] = await Promise.all([
+      this.prisma.specificationVersion.findFirst({ where: { dieLineFileId: fileId }, select: { id: true } }),
+      this.prisma.artworkFile.findFirst({ where: { fileId, kind: 'PROOF', version: { sentAt: { not: null } } }, select: { id: true } }),
+    ]);
+    return !!spec || !!proof;
   }
 
   /** Objects written but never committed (crash between put and commit). Local driver only; Supabase handled by lifecycle rules. */

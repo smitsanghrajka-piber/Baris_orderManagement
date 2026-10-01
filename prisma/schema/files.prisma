@@ -34,6 +34,7 @@ model File {
   generatedDocuments GeneratedDocument[]
   specDieLines       SpecificationVersion[] @relation("SpecDieLineFile")
   companyLogo        CompanySettings[]
+  artworkFiles       ArtworkFile[]
 
   @@index([sha256])
   @@index([customerId])
