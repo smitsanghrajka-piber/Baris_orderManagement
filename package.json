@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "build:web": "npm ci --prefix frontend && npm run build --prefix frontend",
+    "build:all": "npm run build && npm run build:web",
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "start:dev": "nest start --watch",

@@ -5,6 +5,7 @@ frontend/node_modules/
 .env
 .env.local
 /storage/
+/storage-test/
 .pgdata/
 *.log
 .DS_Store

@@ -1,5 +1,6 @@
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ListQueryDto } from '../../../common/util/pagination';
 
 const CODE = /^[A-Z0-9][A-Z0-9_\-]{0,39}$/;
 const TOOL_TYPES = ['DIE', 'CUTTING_TOOL', 'OTHER'] as const;
@@ -41,4 +42,10 @@ export class PlateSetDto {
 export class UpdatePlateSetDto extends PlateSetDto {
   @IsOptional() @IsString() @Matches(CODE) declare code: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(120) declare name: string;
+}
+
+/** A real class (not an intersection type) so the ValidationPipe converts page/pageSize to numbers. */
+export class ToolingListQueryDto extends ListQueryDto {
+  @IsOptional() @IsUUID() customerId?: string;
+  @IsOptional() @IsIn(['true', 'false']) includeArchived?: string;
 }

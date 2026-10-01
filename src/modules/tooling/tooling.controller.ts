@@ -2,8 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { ApiTags } from '@nestjs/swagger';
 import { ToolingService } from './tooling.service';
 import { RequirePermission } from '../../common/auth/decorators';
-import { ListQueryDto } from '../../common/util/pagination';
-import { PlateSetDto, ToolDto, UpdatePlateSetDto, UpdateToolDto } from './dto/tooling.dto';
+import { PlateSetDto, ToolDto, ToolingListQueryDto, UpdatePlateSetDto, UpdateToolDto } from './dto/tooling.dto';
 
 @ApiTags('tooling')
 @Controller('tooling')
@@ -11,7 +10,7 @@ export class ToolingController {
   constructor(private readonly tooling: ToolingService) {}
 
   @RequirePermission('tooling.view') @Get('tools')
-  listTools(@Query() q: ListQueryDto & { customerId?: string; includeArchived?: string }) { return this.tooling.listTools(q); }
+  listTools(@Query() q: ToolingListQueryDto) { return this.tooling.listTools(q); }
 
   @RequirePermission('tooling.view') @Get('tools/:id')
   getTool(@Param('id') id: string) { return this.tooling.getTool(id); }
@@ -26,7 +25,7 @@ export class ToolingController {
   archiveTool(@Param('id') id: string) { return this.tooling.archiveTool(id); }
 
   @RequirePermission('tooling.view') @Get('plate-sets')
-  listPlateSets(@Query() q: ListQueryDto & { customerId?: string; includeArchived?: string }) { return this.tooling.listPlateSets(q); }
+  listPlateSets(@Query() q: ToolingListQueryDto) { return this.tooling.listPlateSets(q); }
 
   @RequirePermission('tooling.edit') @Post('plate-sets')
   createPlateSet(@Body() dto: PlateSetDto) { return this.tooling.createPlateSet(dto); }
